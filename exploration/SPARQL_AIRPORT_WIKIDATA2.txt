@@ -1,0 +1,30 @@
+
+SELECT ?paysLabel ?countryFlag ?itemLabel (substr(str(AVG(?lon)),1,10) AS ?longitude) (substr(str(AVG(?lat)),1,10) AS ?latitude) (max(?patronage3) AS ?MAX_patronage) #(max(?date3) AS ?MAX_DATE)       
+WHERE   {
+                    ?item wdt:P31*/wdt:P279* wd:Q1248784 .
+                    ?item wdt:P17 ?pays .
+  OPTIONAL { ?pays wdt:P41 ?countryFlag .}
+                    ?item p:P625 [
+                                   #ps:P625 ?coord;
+                                    psv:P625 [
+                                    wikibase:geoLongitude ?lon;
+                                    wikibase:geoLatitude  ?lat; 
+                                     ]
+                                  ].
+                    #?item wdt:P131 ?region .
+                    ?item p:P3872 ?patronage2 .
+                    ?patronage2 ps:P3872 ?patronage3 .
+                    FILTER(?patronage3 > 10000) . #Pour avoir seulement les aéroports avec un minimum de passagers
+                    ?patronage2 pq:P585 ?date3 .  
+                    FILTER(YEAR(?date3) >= 2015) . #Pour limiter le temps de la requête dans la recherche de la date la plus récente
+                    #BIND(substr(str(?lon),1,10) AS ?longitude) .
+                    #BIND(substr(str(?lat),1,10) AS ?latitude) .
+     FILTER NOT EXISTS {
+    ?item p:P3872/pq:P585 ?date4 .
+    FILTER (?date4 > ?date3)
+        }
+                   # FILTER((YEAR(now()) - YEAR(?date3)) = 1) . #Pour avoir seulement la dernière année révolue
+            SERVICE wikibase:label { bd:serviceParam wikibase:language "en" . }
+                 }
+GROUP BY ?paysLabel ?countryFlag ?itemLabel
+ORDER BY DESC(?MAX_patronage)

@@ -1,0 +1,123 @@
+SELECT ?paysLabel ?datepop ?pop ?rank ?best
+WHERE   {
+          ?pays wdt:P31 wd:Q6256;
+                p:P1082 ?popStatement .
+           ?popStatement wikibase:rank ?rank .
+            OPTIONAL { ?popStatement a ?best . }
+           ?popStatement ps:P1082 ?pop;
+                         pq:P585 ?datepop .
+          #FILTER((YEAR(now()) - YEAR(?date)) <= 2) .
+  FILTER NOT EXISTS {
+    ?pays p:P1082/pq:P585 ?hdi_date_ .
+    FILTER (?hdi_date_ > ?datepop)
+}
+            SERVICE wikibase:label { bd:serviceParam wikibase:language "en" . }
+                 }
+ORDER BY ?paysLabel
+
+SELECT ?paysLabel ?datepop ?pop (str(?rank) as ?rank3) ?best1 ?best2
+WHERE   {
+          ?pays wdt:P31 wd:Q6256;
+                p:P1082 ?popStatement .
+           ?popStatement wikibase:rank ?rank .
+           #OPTIONAL { ?popStatement a ?best . }
+      BIND( IF(str(?rank) = "http://wikiba.se/ontology#PreferredRank", 1, 0) AS ?best1) .
+           ?popStatement ps:P1082 ?pop;
+                         pq:P585 ?datepop .
+          #FILTER((YEAR(now()) - YEAR(?date)) <= 2) .
+    FILTER NOT EXISTS {
+     ?pays p:P1082 ?popStatement2 .
+     ?popStatement2 wikibase:rank ?rank2 .
+    BIND( IF(str(?rank2) = "http://wikiba.se/ontology#PreferredRank", 1, 0) AS ?best2) .
+    FILTER (?best2 > ?best1) .
+}
+  FILTER NOT EXISTS {
+    ?pays p:P1082/pq:P585 ?hdi_date_ .
+    FILTER (?hdi_date_ > ?datepop)
+}
+            SERVICE wikibase:label { bd:serviceParam wikibase:language "en" . }
+                 }
+ORDER BY ?paysLabel
+
+SELECT ?paysLabel ?datepop ?pop (str(?rank) as ?rank3) ?best1 ?best2
+WHERE   {
+          ?pays wdt:P31 wd:Q6256;
+                p:P1082 ?popStatement .
+           ?popStatement wikibase:rank ?rank .
+           #OPTIONAL { ?popStatement a ?best . }
+      BIND( IF(str(?rank) = "http://wikiba.se/ontology#PreferredRank", 2, 1) AS ?best1) .
+           ?popStatement ps:P1082 ?pop;
+                         pq:P585 ?datepop .
+          #FILTER((YEAR(now()) - YEAR(?date)) <= 2) .
+    FILTER NOT EXISTS {
+     ?pays p:P1082 ?popStatement2 .
+         ?popStatement2 wikibase:rank ?rank2 .
+    BIND( IF(str(?rank2) = "http://wikiba.se/ontology#PreferredRank", 2, 1) AS ?best2) .
+    FILTER (?best2 > ?best1) 
+}
+  #FILTER NOT EXISTS {
+    #?pays p:P1082/pq:P585 ?hdi_date_ .
+   # FILTER (?hdi_date_ > ?datepop)
+#}
+            SERVICE wikibase:label { bd:serviceParam wikibase:language "en" . }
+                 }
+ORDER BY ?paysLabel
+
+###################
+# POPULATION PAYS #
+###################
+SELECT ?paysLabel ?datepop (AVG(?pop) AS ?population)
+WHERE   {
+          ?pays wdt:P31 wd:Q6256;
+                p:P1082 ?popStatement .
+            ?popStatement ps:P1082 ?pop;
+                         pq:P585 ?datepop .
+      FILTER NOT EXISTS {
+    ?pays p:P1082/pq:P585 ?hdi_date_ .
+    FILTER (?hdi_date_ > ?datepop)
+        }
+            SERVICE wikibase:label { bd:serviceParam wikibase:language "en" . }
+  }                
+GROUP BY ?paysLabel ?datepop
+ORDER BY ?paysLabel
+
+
+############
+# IDH PAYS #
+############
+
+SELECT ?paysLabel ?dateIDH ?IDH
+WHERE   {
+          ?pays wdt:P31 wd:Q6256 .
+  #?pays wdt:P1125 ?GINI .
+  ?pays p:P1081 ?IDHStatement .
+  ?IDHStatement pq:P585 ?dateIDH .
+       OPTIONAL { ?IDHStatement ps:P1081 ?IDH .  }
+        FILTER NOT EXISTS {
+    ?pays p:P1081/pq:P585 ?dateIDH2 .
+    FILTER (?dateIDH2 > ?dateIDH)
+        }
+
+            SERVICE wikibase:label { bd:serviceParam wikibase:language "en" . }
+  }                
+ORDER BY ?paysLabel
+
+#########################
+# ESPERANCE DE VIE PAYS #
+#########################
+
+SELECT ?paysLabel ?dateEV ?Esperance_vie
+WHERE   {
+          ?pays wdt:P31 wd:Q6256 .
+  #?pays wdt:P1125 ?GINI .
+  ?pays p:P2250 ?EV_Statement .
+  ?EV_Statement pq:P585 ?dateEV .
+       OPTIONAL { ?EV_Statement ps:P2250 ?Esperance_vie .  }
+        FILTER NOT EXISTS {
+    ?pays p:P2250/pq:P585 ?dateEV2 .
+    FILTER (?dateEV2 > ?dateEV)
+        }
+
+            SERVICE wikibase:label { bd:serviceParam wikibase:language "en" . }
+  }                
+ORDER BY ?paysLabel
