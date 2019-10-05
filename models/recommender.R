@@ -2,6 +2,7 @@ rm(list=ls())
 library(data.table)
 library(fst)
 library(mxnet)
+library(ggplot2)
 
 data <- mx.symbol.Variable("data")
 label <- mx.symbol.Variable("label")
@@ -15,10 +16,9 @@ proj_1_bias <- mx.symbol.Variable("proj_1_bias")
 proj_2_weight <- mx.symbol.Variable("proj_2_weight")
 proj_2_bias <- mx.symbol.Variable("proj_2_bias")
 
-num_embed <- 10
+num_embed <- 2
 num_hidden <- 16
 p <- 0.5
-num_hidden <- as.integer(unlist(strsplit(as.character(num_hidden), split = ":")))
 act_type <- "relu"
 
 index_levels <- c("nationality"=227)
@@ -41,7 +41,7 @@ for (j in 1:num_embed_vars) {
 embed_1 <- mx.symbol.concat(c(embed_list[1:1]), num.args = 1, dim = -1)
 embed_2 <- hotel_features
 
-embed_1 <- mx.symbol.FullyConnected(data = embed_1, weight = proj_1_weight, bias = proj_1_bias, num_hidden=num_hidden) %>%
+embed_1 <- mx.symbol.FullyConnected(data = embed_1, num_hidden=num_hidden) %>%
   # mx.symbol.Dropout(p=p[1]) %>%
   mx.symbol.BatchNorm() %>%
   mx.symbol.Activation(act_type = "tanh")
@@ -51,7 +51,7 @@ embed_1 <- mx.symbol.FullyConnected(data = embed_1, weight = proj_1_weight, bias
 #   mx.symbol.Activation(act_type = "relu")
 # embed_1 <- mx.symbol.FullyConnected(data = embed_1, weight = proj_2_weight, bias = proj_2_bias, num_hidden=num_hidden)
 
-embed_2 <- mx.symbol.FullyConnected(data = embed_2, weight = proj_1_weight, bias = proj_1_bias, num_hidden=num_hidden) %>%
+embed_2 <- mx.symbol.FullyConnected(data = embed_2, num_hidden=num_hidden) %>%
   # mx.symbol.Dropout(p=p[1]) %>%
   mx.symbol.BatchNorm() %>%
   mx.symbol.Activation(act_type = "tanh")
@@ -67,7 +67,7 @@ final  <- mx.symbol.batch_dot(embed_1, embed_2)
 final  <- mx.symbol.reshape(final, shape = c(0,0))
 final <- mx.symbol.FullyConnected(data = final, num_hidden=1)
 
-loss <- mx.symbol.LinearRegressionOutput(data = final, label = label, name = "loss")
+loss <- mx.symbol.LogisticRegressionOutput(data = final, label = label, name = "loss")
 
 # loss$arguments
 graph.viz(loss, shape = list(data=c(11, 128), label=128))
@@ -101,14 +101,14 @@ X_eval <- as.matrix(data[-train_id, ])
 Y_train <- label[train_id]
 Y_eval <- label[-train_id]
 
-batch.size <- 512
+batch.size <- 128
 iter_train <- mx.io.arrayiter(data = t(X_train), label = Y_train, batch.size = batch.size, shuffle = F)
 iter_eval <- mx.io.arrayiter(data = t(X_eval), label = Y_eval, batch.size = batch.size, shuffle = F)
 
 initializer <- mx.init.Xavier(rnd_type = "gaussian", factor_type = "avg", magnitude = 1)
 # optimizer <- mx.opt.create(name = "adadelta", rho = 0.9, epsilon = 1e-7,
 #                            wd = 1e-8, rescale.grad = 1, clip_gradient = 1)
-optimizer <- mxnet:::mx.opt.adam(learning.rate = 0.001, beta1 = 0.9, beta2 = 0.999, wd = 1e-8, rescale.grad = 1, clip_gradient = 1)
+optimizer <- mxnet:::mx.opt.adam(learning.rate = 0.001, beta1 = 0.9, beta2 = 0.999, wd = 1e-5, rescale.grad = 1 / batch.size, clip_gradient = 1)
 
 metric <- mx.metric.mse
 batch.end.callback <- mx.callback.log.speedometer(batch.size = batch.size, frequency = 50)
@@ -131,9 +131,19 @@ model <- mx.model.buckets(symbol = loss,
                           epoch.end.callback = epoch.end.callback)
 
 mxnet::mx.model.save(model = model, prefix = "recommender", iteration = 8)
+mxnet::mx.nd.save(ndarray = model$arg.params$nationalityembed_weight, filename = "nationalityembed_weight.params")
 
-# pred_eval <- as.numeric(predict(model, iter_eval))
-# length(pred_eval)
-# dt_eval[, infer := pred_eval]
-# head(dt_eval)
+nationality_weight <- t(as.array(model$arg.params$nationalityembed_weight))
 
+nationality_embed_dt <- data.table(nationality_weight)
+nationality_embed_dt <- cbind(nationality_table, nationality_embed_dt)
+
+country_list <- c("Canada", "France", "India", "Norway", "Sweden", "Germany", "United States of America", "Mexico", "Japan", "China", "Belgium", "Brazil", "United Kingdom")
+embed_ids <- match(country_list, nationality_embed_dt$nationality)
+embeddings_sample <- nationality_embed_dt[embed_ids, ]
+
+p <- ggplot(embeddings_sample, aes(x = V1, y = V2, label = nationality))
+p <- p + geom_text(check_overlap = F, color="navy") + theme_bw() +  theme(panel.grid=element_blank()) +
+  labs(x = "embed 1", y = "embed 2")
+
+ggplot2::ggsave(p, filename = "country_embed.png")
