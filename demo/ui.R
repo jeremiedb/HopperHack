@@ -26,20 +26,21 @@ ui <- dashboardPage(skin = "black",
                     dashboardBody(
                         tabItems(
                             # First tab content
-                            tabItem(tabName = "flights",
+                            tabItem(tabName = "flights", width = 8,
                               box(title = "Flight Informations", width = 6,
                                 numericInput("nb_travelers", "Number of travelers:", value = 1, min = 1, max = 10, step = 1),
                                 selectizeInput("location_from", "From:", choices = dt_wiki_airports$label_search, selected = "", multiple = FALSE),
-                                selectizeInput("location_to", "To:", choices = dt_wiki_airports$label_search, selected = "", multiple = FALSE)
+                                selectizeInput("location_to", "To:", choices = dt_wiki_airports$label_search, selected = "", multiple = FALSE),
+                                actionButton("submit", "Submit")
                               )
                             ),
 
                             # Second tab content
-                            tabItem(tabName = "hotels", width = 6,
+                            tabItem(tabName = "hotels", width = 8,
                                     box(title = "Hotel Informations",
-                                        selectizeInput("hotel_cities", label = "Cities to look for:", choices = dt_cities$label_search, selected = "", multiple = T)
+                                        selectizeInput("hotel_cities", label = "Cities to look for:", choices = dt_cities$label_search, selected = "London", multiple = F)
                                     ),
-                                    textOutput("list")
+                                    dataTableOutput("hotels_recommended")
                             )
                         )
                     )
