@@ -12,13 +12,13 @@ library(shinydashboard)
 
 # Define UI for application that draws a histogram
 ui <- dashboardPage(skin = "black",
-                    dashboardHeader(title = "Hotel Recommendation"),
+                    dashboardHeader(title = "HopperHacks19"),
 
                     ## Sidebar content
                     dashboardSidebar(
                         sidebarMenu(
-                            menuItem("Dashboard", tabName = "dashboard", icon = icon("dashboard")),
-                            menuItem("Widgets", tabName = "widgets", icon = icon("th"))
+                            menuItem("Flights", tabName = "flights", icon = icon("plane")),
+                            menuItem("Hotels", tabName = "hotels", icon = icon("hotel"))
                         )
                     ),
 
@@ -26,26 +26,20 @@ ui <- dashboardPage(skin = "black",
                     dashboardBody(
                         tabItems(
                             # First tab content
-                            tabItem(tabName = "dashboard",
-                                    fluidRow(
-                                      selectInput("Origin", label = "Origin",
-                                                  c("Canada" = "canada",
-                                                    "USA" = "usa",
-                                                    "France" = "france",
-                                                    "UK" = "uk",
-                                                    "Germany" = "germany"), selected = "Canada", selectize = T),
-                                        box(plotOutput("plot1", height = 250)),
-
-                                        box(
-                                            title = "Controls",
-                                            sliderInput("slider", "Number of observations:", 1, 100, 50)
-                                        )
-                                    )
+                            tabItem(tabName = "flights",
+                              box(title = "Flight Informations", width = 6,
+                                numericInput("nb_travelers", "Number of travelers:", value = 1, min = 1, max = 10, step = 1),
+                                selectizeInput("location_from", "From:", choices = dt_wiki_airports$label_search, selected = "", multiple = FALSE),
+                                selectizeInput("location_to", "To:", choices = dt_wiki_airports$label_search, selected = "", multiple = FALSE)
+                              )
                             ),
 
                             # Second tab content
-                            tabItem(tabName = "widgets",
-                                    h2("Widgets tab content")
+                            tabItem(tabName = "hotels", width = 6,
+                                    box(title = "Hotel Informations",
+                                        selectizeInput("hotel_cities", label = "Cities to look for:", choices = dt_cities$label_search, selected = "", multiple = T)
+                                    ),
+                                    textOutput("list")
                             )
                         )
                     )

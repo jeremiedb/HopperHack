@@ -1,16 +1,30 @@
 
 library(shiny)
 library(shinydashboard)
-library(mxnet)
+library(data.table)
+#library(mxnet)
 
-server <- function(input, output) {
-    set.seed(122)
-    histdata <- rnorm(500)
+dt_cities <- fread("data/worldcities.csv")
+dt_cities[, label_search := paste0(city, " (", admin_name, ")")]
+dt_wiki_airports <- data.table(fromJSON("data/WIKIDATA_AIRPORT_passagers.json"))
+dt_wiki_airports[, label_search := paste0(itemLabel, " (", iatacode, ")")]
+dt_wiki_airports <- dt_wiki_airports[, (c("iatacode", "longitude", "latitude", "label_search")), with = FALSE]
 
-    output$plot1 <- renderPlot({
-        data <- histdata[seq_len(input$slider)]
-        hist(data)
+server <- function(input, output, server) {
+    
+    hotel_cities <- reactive({
+      list(
+          city = input$hotel_cities,
+          lat = dt_cities[label_search == input$hotel_cities,]$lat,
+          lon = dt_cities[label_search == input$hotel_cities,]$lng
+        )
     })
+    
+    output$list <- renderPrint({ 
+      print(hotel_cities())
+    })
+    
+    
 }
 
 shinyServer(server)
