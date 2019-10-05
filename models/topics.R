@@ -5,7 +5,7 @@
 ##############################
 
 #install.packages('tidytext')
-
+library(data.table)
 library('tidytext')
 library(magrittr)
 library(tm)
@@ -18,7 +18,8 @@ library(quanteda)
 library(tm)
 #install.packages('topicmodels')
 library(topicmodels)
-
+#install.packages('lsa')
+library(lsa)
 
 stop_words2=stop_words[!stop_words$word %in%
 
@@ -40,12 +41,10 @@ stop_words2=stop_words[!stop_words$word %in%
 
 
 
-myCorpus <- read.csv("//nassmb/usagers_02$/labrecjo/HACKATHON/HOPPER_HACKATHON_2019/515k-hotel-reviews-data-in-europe/Hotel_Reviews.csv")
+myCorpus <- fread("../data/Hotel_Reviews.csv", data.table = F)
 myCorpus$Reviewer_Nationality=as.character(myCorpus$Reviewer_Nationality)
 
-
 Corpus_neg_nation = myCorpus[as.character(myCorpus$Negative_Review) != 'No Negative' & as.character(myCorpus$Negative_Review) != ' ',]
-
 reviews_neg <- data.frame(txt = as.character(Corpus_neg_nation$Negative_Review),
                           doc = as.character(row.names(Corpus_neg_nation)),
                           stringsAsFactors = FALSE)
@@ -59,12 +58,20 @@ reviews_neg_ngram  = mutate(reviews_neg, text = gsub(x = txt, pattern = "[0-9]+|
   unite(ngram,word1, word2,word3, sep = " ")
 
 
-
 #Pour enlever les 'NA' dans les bigram de mots
 reviews_neg_ngram = mutate(reviews_neg_ngram, ngram = gsub(x = ngram, pattern = " NA", replacement = ""))
 reviews_neg_ngram = mutate(reviews_neg_ngram, ngram = gsub(x = ngram, pattern = "NA", replacement = ""))
 
+dim(reviews_neg_ngram)
+dim(ngram_counts)
+names(reviews_neg_ngram)
+head(reviews_neg_ngram)
+names(reviews_neg_ngram)
+reviews_neg_ngram$ngram
 
+# reviews_neg_ngram_dt <- as.data.table(reviews_neg_ngram)
+# setkeyv(reviews_neg_ngram_dt, c("doc", "ngram"))
+# ngram_counts_dt <- reviews_neg_ngram_dt[, .(.N), by = c("doc", "ngram")]
 
 ngram_counts <- reviews_neg_ngram %>%
   count(doc, ngram)
@@ -73,15 +80,12 @@ ngram_counts =   ngram_counts %>%
   bind_tf_idf(doc, ngram, n) %>%
   arrange(desc(n))
 
-
-ngram_counts2 = top_n(x=ngram_counts,n=50000, n)
-ngram_counts3 = top_n(x=ngram_counts2,n=5000, tf_idf)
+ngram_counts2 = top_n(x=ngram_counts,n=10000, n)
+ngram_counts3 = top_n(x=ngram_counts2,n=1000, tf_idf)
 ngram_counts4 = ngram_counts3[,c(1:3)]
 
 reviews_neg_ngram_dtm <- ngram_counts4 %>%
   cast_dtm(doc, ngram, n)
-
-
 
 #On va enlever les terms les moins fréquents de manière à garder seulement les 1116 plus fréquents
 #reviews_neg_ngram_dtm = removeSparseTerms(reviews_neg_ngram_dtm, 0.9996)
@@ -92,10 +96,6 @@ reviews_neg_ngram_dtm=reviews_neg_ngram_dtm[raw.sum!=0,]
 total_TD_Neg=as.matrix(reviews_neg_ngram_dtm)
 
 #total_TD_Neg_t=t(total_TD_Neg)
-
-#install.packages('lsa')
-library(lsa)
-
 #russie_TD_Neg_t
 #x.matrice =russie_TD_Neg_t[,colSums(russie_TD_Neg_t)!=0]
 
@@ -105,25 +105,20 @@ x.matrice =total_TD_Neg[,colSums(total_TD_Neg)!=0] #On ne veut pas de colonnes a
 
 Lesmoyennes=as.matrix(t(apply(x.matrice,2,mean)))
 Lesecart_types=sqrt(as.matrix(t(apply(x.matrice,2,var))))
-
 z.matrice=x.matrice
-
 
 for (j in 1:ncol(x.matrice)) {
   z.matrice[,j]= (x.matrice[,j] - Lesmoyennes[1,j]) / Lesecart_types[1,j]
 }
 
 t1 <- Sys.time()
-a=svd(z.matrice, nv=30)
+a=svd(z.matrice, nv=20)
 t2 <- Sys.time()
 t2 - t1  # temps que cela a pris
-
-
 
 d=a$d
 u=a$u
 v=a$v
-
 
 D <- diag(a$d)
 
@@ -131,7 +126,7 @@ D <- diag(a$d)
 lescomposantes = v
 lesmots = as.matrix(colnames(z.matrice))
 lescomposantes_mots <- as.matrix(data.frame(lescomposantes, row.names=lesmots[,1])) #Pour mettre les mots en noms de lignes
-les30composantes_mots=lescomposantes_mots[,1:30]
+les30composantes_mots=lescomposantes_mots[,1:20]
 
 #Enlever les mots ayant des loading trop bas
 
