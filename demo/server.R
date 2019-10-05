@@ -20,10 +20,10 @@ server <- function(input, output, server) {
         )
     })
     
-    output$list <- renderPrint({ 
-      print(hotel_cities())
-    })
     
+    nation <- reactive({
+      dt_
+    })
     
 }
 
