@@ -1,3 +1,7 @@
+rm(list=ls())
+library(data.table)
+library(fst)
+library(mxnet)
 
 data <- mx.symbol.Variable("data")
 label <- mx.symbol.Variable("label")
@@ -11,18 +15,17 @@ proj_1_bias <- mx.symbol.Variable("proj_1_bias")
 proj_2_weight <- mx.symbol.Variable("proj_2_weight")
 proj_2_bias <- mx.symbol.Variable("proj_2_bias")
 
-num_embed <- 32
+num_embed <- 10
 num_hidden <- 16
 p <- 0.5
 num_hidden <- as.integer(unlist(strsplit(as.character(num_hidden), split = ":")))
 act_type <- "relu"
 
-index_levels <- c("user"=20, "hotel"=200)
+index_levels <- c("nationality"=227)
 num_embed_vars <- length(index_levels)
 
 # num features
-features <- mx.symbol.slice_axis(data = data, axis = -1, begin = 2*num_embed_vars, end="None")
-features <- mx.symbol.split(data = features, num_outputs = 2, axis = -1)
+hotel_features <- mx.symbol.slice_axis(data = data, axis = -1, begin = num_embed_vars, end="None", name = "hotel_features")
 
 # embedings
 embed_weights <- lapply(seq_len(num_embed_vars), function(x) mx.symbol.Variable(paste0(names(index_levels)[x], "embed_weight")))
@@ -36,12 +39,13 @@ for (j in 1:num_embed_vars) {
 }
 
 embed_1 <- mx.symbol.concat(c(embed_list[1:1]), num.args = 1, dim = -1)
-embed_2 <- mx.symbol.concat(c(embed_list[2:2]), num.args = 1, dim = -1)
+embed_2 <- hotel_features
 
 embed_1 <- mx.symbol.FullyConnected(data = embed_1, weight = proj_1_weight, bias = proj_1_bias, num_hidden=num_hidden) %>%
   # mx.symbol.Dropout(p=p[1]) %>%
   mx.symbol.BatchNorm() %>%
-  mx.symbol.Activation(act_type = "relu")
+  mx.symbol.Activation(act_type = "tanh")
+
 # embed_1 <- mx.symbol.Dropout(data = embed_1, p=p[1])
 # embed_1 <- mx.symbol.FullyConnected(data = embed_1, weight = proj_1_weight, bias = proj_1_bias, num_hidden=num_hidden) %>%
 #   mx.symbol.Activation(act_type = "relu")
@@ -50,7 +54,8 @@ embed_1 <- mx.symbol.FullyConnected(data = embed_1, weight = proj_1_weight, bias
 embed_2 <- mx.symbol.FullyConnected(data = embed_2, weight = proj_1_weight, bias = proj_1_bias, num_hidden=num_hidden) %>%
   # mx.symbol.Dropout(p=p[1]) %>%
   mx.symbol.BatchNorm() %>%
-  mx.symbol.Activation(act_type = "relu")
+  mx.symbol.Activation(act_type = "tanh")
+
 # embed_2 <- mx.symbol.Dropout(data = embed_2, p=p[1])
 # embed_2 <- mx.symbol.FullyConnected(data = embed_2, weight = proj_1_weight, bias = proj_1_bias, num_hidden=num_hidden) %>%
 #   mx.symbol.Activation(act_type = "relu")
@@ -64,6 +69,71 @@ final <- mx.symbol.FullyConnected(data = final, num_hidden=1)
 
 loss <- mx.symbol.LinearRegressionOutput(data = final, label = label, name = "loss")
 
-loss$arguments
+# loss$arguments
+graph.viz(loss, shape = list(data=c(11, 128), label=128))
 
-graph.viz(loss)
+
+dt <- read_fst("../data/score_hotel_embeddings.fst", as.data.table = T)
+vars <- paste0("embed_", 1:10)
+dt[, (vars) := lapply(.SD, function(x) mean(x)), .SDcols = vars, by = "Hotel_Name"]
+
+# lead features
+train_id <- sample(nrow(dt))[1:400000]
+nationality_levels <- sort(unique(dt$Reviewer_Nationality))
+dt[, nationality_index := as.integer(factor(Reviewer_Nationality, levels = nationality_levels))-1]
+
+# save nationality table
+nationality_table <- data.table(nationality = nationality_levels, nationality_index = 1:length(nationality_levels)-1)
+write_fst(nationality_table, "nationality_table.fst")
+
+# save hotel embeddings
+dt_hotel <- dt[!duplicated(dt[, c("Hotel_Name")])]
+dt_hotel <- dt_hotel[, c("Hotel_Name", paste0("embed_", 1:10))]
+write_fst(dt_hotel, "dt_hotel.fst")
+
+dt_train <- dt[train_id]
+dt_eval <- dt[-train_id]
+
+data <- dt[, c("nationality_index", paste0("embed_", 1:10))]
+label <- dt$Reviewer_Score / 10
+X_train <- as.matrix(data[train_id, ])
+X_eval <- as.matrix(data[-train_id, ])
+Y_train <- label[train_id]
+Y_eval <- label[-train_id]
+
+batch.size <- 512
+iter_train <- mx.io.arrayiter(data = t(X_train), label = Y_train, batch.size = batch.size, shuffle = F)
+iter_eval <- mx.io.arrayiter(data = t(X_eval), label = Y_eval, batch.size = batch.size, shuffle = F)
+
+initializer <- mx.init.Xavier(rnd_type = "gaussian", factor_type = "avg", magnitude = 1)
+# optimizer <- mx.opt.create(name = "adadelta", rho = 0.9, epsilon = 1e-7,
+#                            wd = 1e-8, rescale.grad = 1, clip_gradient = 1)
+optimizer <- mxnet:::mx.opt.adam(learning.rate = 0.001, beta1 = 0.9, beta2 = 0.999, wd = 1e-8, rescale.grad = 1, clip_gradient = 1)
+
+metric <- mx.metric.mse
+batch.end.callback <- mx.callback.log.speedometer(batch.size = batch.size, frequency = 50)
+epoch.end.callback <- mx.callback.log.train.metric(period = 1)
+
+# ctx <- mx.cpu(0)
+ctx <- mx.gpu(0)
+
+mx.set.seed(123)
+model <- mx.model.buckets(symbol = loss,
+                          train.data = iter_train,
+                          eval.data = iter_eval,
+                          ctx=ctx,
+                          num.round=8,
+                          optimizer = optimizer,
+                          initializer = initializer,
+                          metric=metric,
+                          kvstore = "local",
+                          batch.end.callback = batch.end.callback,
+                          epoch.end.callback = epoch.end.callback)
+
+mxnet::mx.model.save(model = model, prefix = "recommender", iteration = 8)
+
+# pred_eval <- as.numeric(predict(model, iter_eval))
+# length(pred_eval)
+# dt_eval[, infer := pred_eval]
+# head(dt_eval)
+

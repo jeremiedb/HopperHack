@@ -1,0 +1,251 @@
+{
+  "nodes": [
+    {
+      "op": "null", 
+      "name": "data", 
+      "inputs": []
+    }, 
+    {
+      "op": "slice_axis", 
+      "name": "slice_nationality", 
+      "attrs": {
+        "axis": "-1", 
+        "begin": "0", 
+        "end": "1"
+      }, 
+      "inputs": [[0, 0, 0]]
+    }, 
+    {
+      "op": "Reshape", 
+      "name": "reshape_nationality", 
+      "attrs": {"shape": "(0,)"}, 
+      "inputs": [[1, 0, 0]]
+    }, 
+    {
+      "op": "null", 
+      "name": "nationalityembed_weight", 
+      "inputs": []
+    }, 
+    {
+      "op": "Embedding", 
+      "name": "embed_nationality", 
+      "attrs": {
+        "input_dim": "227", 
+        "output_dim": "10"
+      }, 
+      "inputs": [[2, 0, 0], [3, 0, 0]]
+    }, 
+    {
+      "op": "Concat", 
+      "name": "concat6", 
+      "attrs": {
+        "dim": "-1", 
+        "num_args": "1"
+      }, 
+      "inputs": [[4, 0, 0]]
+    }, 
+    {
+      "op": "null", 
+      "name": "proj_1_weight", 
+      "inputs": []
+    }, 
+    {
+      "op": "null", 
+      "name": "proj_1_bias", 
+      "inputs": []
+    }, 
+    {
+      "op": "FullyConnected", 
+      "name": "fullyconnected7", 
+      "attrs": {"num_hidden": "16"}, 
+      "inputs": [[5, 0, 0], [6, 0, 0], [7, 0, 0]]
+    }, 
+    {
+      "op": "null", 
+      "name": "batchnorm4_gamma", 
+      "inputs": []
+    }, 
+    {
+      "op": "null", 
+      "name": "batchnorm4_beta", 
+      "inputs": []
+    }, 
+    {
+      "op": "null", 
+      "name": "batchnorm4_moving_mean", 
+      "attrs": {"__init__": "[\"zero\", {}]"}, 
+      "inputs": []
+    }, 
+    {
+      "op": "null", 
+      "name": "batchnorm4_moving_var", 
+      "attrs": {"__init__": "[\"one\", {}]"}, 
+      "inputs": []
+    }, 
+    {
+      "op": "BatchNorm", 
+      "name": "batchnorm4", 
+      "inputs": [[8, 0, 0], [9, 0, 0], [10, 0, 0], [11, 0, 1], [12, 0, 1]]
+    }, 
+    {
+      "op": "Activation", 
+      "name": "activation4", 
+      "attrs": {"act_type": "tanh"}, 
+      "inputs": [[13, 0, 0]]
+    }, 
+    {
+      "op": "expand_dims", 
+      "name": "expand_dims7", 
+      "attrs": {"axis": "1"}, 
+      "inputs": [[14, 0, 0]]
+    }, 
+    {
+      "op": "slice_axis", 
+      "name": "hotel_features", 
+      "attrs": {
+        "axis": "-1", 
+        "begin": "1", 
+        "end": "None"
+      }, 
+      "inputs": [[0, 0, 0]]
+    }, 
+    {
+      "op": "FullyConnected", 
+      "name": "fullyconnected8", 
+      "attrs": {"num_hidden": "16"}, 
+      "inputs": [[16, 0, 0], [6, 0, 0], [7, 0, 0]]
+    }, 
+    {
+      "op": "null", 
+      "name": "batchnorm5_gamma", 
+      "inputs": []
+    }, 
+    {
+      "op": "null", 
+      "name": "batchnorm5_beta", 
+      "inputs": []
+    }, 
+    {
+      "op": "null", 
+      "name": "batchnorm5_moving_mean", 
+      "attrs": {"__init__": "[\"zero\", {}]"}, 
+      "inputs": []
+    }, 
+    {
+      "op": "null", 
+      "name": "batchnorm5_moving_var", 
+      "attrs": {"__init__": "[\"one\", {}]"}, 
+      "inputs": []
+    }, 
+    {
+      "op": "BatchNorm", 
+      "name": "batchnorm5", 
+      "inputs": [[17, 0, 0], [18, 0, 0], [19, 0, 0], [20, 0, 1], [21, 0, 1]]
+    }, 
+    {
+      "op": "Activation", 
+      "name": "activation5", 
+      "attrs": {"act_type": "tanh"}, 
+      "inputs": [[22, 0, 0]]
+    }, 
+    {
+      "op": "expand_dims", 
+      "name": "expand_dims8", 
+      "attrs": {"axis": "2"}, 
+      "inputs": [[23, 0, 0]]
+    }, 
+    {
+      "op": "batch_dot", 
+      "name": "batch_dot3", 
+      "inputs": [[15, 0, 0], [24, 0, 0]]
+    }, 
+    {
+      "op": "Reshape", 
+      "name": "reshape3", 
+      "attrs": {"shape": "(0, 0)"}, 
+      "inputs": [[25, 0, 0]]
+    }, 
+    {
+      "op": "null", 
+      "name": "fullyconnected9_weight", 
+      "attrs": {"num_hidden": "1"}, 
+      "inputs": []
+    }, 
+    {
+      "op": "null", 
+      "name": "fullyconnected9_bias", 
+      "attrs": {"num_hidden": "1"}, 
+      "inputs": []
+    }, 
+    {
+      "op": "FullyConnected", 
+      "name": "fullyconnected9", 
+      "attrs": {"num_hidden": "1"}, 
+      "inputs": [[26, 0, 0], [27, 0, 0], [28, 0, 0]]
+    }, 
+    {
+      "op": "null", 
+      "name": "label", 
+      "inputs": []
+    }, 
+    {
+      "op": "LinearRegressionOutput", 
+      "name": "loss", 
+      "inputs": [[29, 0, 0], [30, 0, 0]]
+    }
+  ], 
+  "arg_nodes": [
+    0, 
+    3, 
+    6, 
+    7, 
+    9, 
+    10, 
+    11, 
+    12, 
+    18, 
+    19, 
+    20, 
+    21, 
+    27, 
+    28, 
+    30
+  ], 
+  "node_row_ptr": [
+    0, 
+    1, 
+    2, 
+    3, 
+    4, 
+    5, 
+    6, 
+    7, 
+    8, 
+    9, 
+    10, 
+    11, 
+    12, 
+    13, 
+    16, 
+    17, 
+    18, 
+    19, 
+    20, 
+    21, 
+    22, 
+    23, 
+    24, 
+    27, 
+    28, 
+    29, 
+    30, 
+    31, 
+    32, 
+    33, 
+    34, 
+    35, 
+    36
+  ], 
+  "heads": [[31, 0, 0]], 
+  "attrs": {"mxnet_version": ["int", 10301]}
+}
